@@ -219,7 +219,7 @@ transitionScore fmsg@(FramedMessage fr msg) s = case s of
 		, mconcat
 			$ eventMessage fr (show (extra status))
 			: [ eventMessage fr (show roundScore ++ "+")
-			  | let lowerBound = granularity * ((max 1 oldScore + granularity - 1) `div` granularity)
+			  | let lowerBound = granularity * (1 + oldScore `div` granularity)
 			  , roundScore <- [ lowerBound
 			                  , lowerBound + granularity
 			                  .. extra status
