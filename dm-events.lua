@@ -10,7 +10,8 @@ function level_select()
 		if palette == music_choice_selected then
 			MUSIC_SELECTION = MUSIC_SELECTION .. music_choice.selection
 		elseif palette ~= music_choice_not_selected then
-			MUSIC_SELECTION = MUSIC_SELECTION .. "ERROR"
+			glitch()
+			return
 		end
 	end
 	if MUSIC_SELECTION == "" then
@@ -18,42 +19,53 @@ function level_select()
 		return
 	end
 
-	level_1p = digits(level_select_text_bg, level_select_text_fg, level_select_level1p_x, level_select_level1p_y, level_digits)
-	speed_1p = level_select_speed(speed_choice_dy_1p)
-	prefix = "level select " .. MUSIC_SELECTION .. " " .. level_1p .. " " .. speed_1p
+	selection_1p = player_selections(level_select_level1p_x, level_select_level1p_y, speed_choice_dy_1p)
 
 	r, g, b, palette = emu.getscreenpixel(enable2p_x, enable2p_y, true)
 	if palette == enable2p_on then
-		level_2p = digits(level_select_text_bg, level_select_text_fg, level_select_level2p_x, level_select_level2p_y, level_digits)
-		speed_2p = level_select_speed(speed_choice_dy_2p)
-		suffix = " " .. level_2p .. " " .. speed_2p
+		selection_2p = player_selections(level_select_level2p_x, level_select_level2p_y, speed_choice_dy_2p)
 	elseif palette == enable2p_off then
-		suffix = ""
+		selection_2p = ""
 	else
-		suffix = "ERROR"
+		glitch()
+		return
 	end
 
+	if selection_1p == nil or selection_2p == nil then
+		glitch()
+		return
+	end
 	DEMO = false
-	report(prefix .. suffix)
+	report("level select " .. MUSIC_SELECTION .. selection_1p .. selection_2p)
 end
 
-function level_select_speed(dy)
+function player_selections(x, y, dy)
+	level = digits(level_select_text_bg, level_select_text_fg, x, y, level_digits)
+
 	SPEED = ""
 	for _, speed_choice in pairs(speed_choices) do
 		r, g, b, palette = emu.getscreenpixel(speed_choice.x, speed_choice.y + dy, true)
 		if palette == speed_choice_selected then
 			SPEED = SPEED .. speed_choice.selection
 		elseif palette ~= speed_choice_not_selected then
-			SPEED = SPEED .. "ERROR" .. palette
+			SPEED = ""
+			break
 		end
 	end
-	return SPEED
+
+	if level == nil or SPEED == "" then
+		return nil
+	else
+		return " " .. level .. " " .. SPEED
+	end
 end
 
 function digits(bg, fg, X, y, n)
 	RESULT = 0
 	for _=1,n do
-		RESULT = 10*RESULT + fingerprint(bg, fg, X, y, digit_fingerprint, digit_mapping)
+		digit = fingerprint(bg, fg, X, y, digit_fingerprint, digit_mapping)
+		if type(digit) ~= "number" then return nil end
+		RESULT = 10*RESULT + digit
 		X = X + digit_width
 	end
 	return RESULT
@@ -67,15 +79,16 @@ function fingerprint(bg, fg, x, y, vectors, mapping)
 		if palette == fg then
 			FINGERPRINT = 1+FINGERPRINT
 		elseif palette ~= bg then
-			return "fingerprint(" .. bg .. ", " .. fg .. ", " .. x .. ", " .. y .. "): saw unknown palette " .. palette .. " at +(" .. vector.dx .. ", " .. vector.dy .. ")"
+			return nil
 		end
 	end
 	return mapping[FINGERPRINT+1] -- 1-indexing lmao
 end
 
 function play_low_or_transition()
-	r, g, b, palette = emu.getscreenpixel(mode2_x, mode2_y, true)
-	mode2_lookup[palette]("low")
+	-- [NOTE: semicolon]
+	r, g, b, palette = emu.getscreenpixel(mode2_x, mode2_y, true);
+	(mode2_lookup[palette] or glitch)("low")
 end
 
 function play_med_or_demo()
@@ -83,8 +96,9 @@ function play_med_or_demo()
 end
 
 function play_hi_or_boot()
-	r, g, b, palette = emu.getscreenpixel(boot_x, boot_y, true)
-	boot_lookup[palette]()
+	-- [NOTE: semicolon]
+	r, g, b, palette = emu.getscreenpixel(boot_x, boot_y, true);
+	(boot_lookup[palette] or glitch)()
 end
 
 function play_hi()
@@ -95,9 +109,14 @@ function boot()
 	report("boot")
 end
 
+function glitch()
+	report("glitch")
+end
+
 function play(speed)
-	r, g, b, palette = emu.getscreenpixel(player_count_x, player_count_y, true)
-	player_count_lookup[palette](speed)
+	-- [NOTE: semicolon]
+	r, g, b, palette = emu.getscreenpixel(player_count_x, player_count_y, true);
+	(player_count_lookup[palette] or glitch)(speed)
 end
 
 function play_1p(speed)
@@ -106,10 +125,16 @@ function play_1p(speed)
 		transition()
 		return
 	end
+
 	level = digits(play_1p_text_bg, play_1p_text_fg, play_1p_level_x, play_1p_level_y, level_digits)
 	viruses = digits(play_1p_text_bg, play_1p_text_fg, play_1p_virus_x, play_1p_virus_y, virus_digits)
-	score = digits(play_1p_text_bg, play_1p_text_fg, play_1p_score_x, play_1p_score_y, score_digits)
-	report("play " .. player_status(level, viruses, speed, score))
+	score = digits(play_1p_text_bg, play_1p_text_fg, play_1p_score_x, play_1p_score_y, score_digits-2)
+
+	if level == nil or viruses == nil or score == nil then
+		glitch()
+	else
+		report("play " .. player_status(level, viruses, speed, 100*score))
+	end
 end
 
 function play_2p(speed_2p)
@@ -126,9 +151,15 @@ function play_2p(speed_2p)
 		r_2p, g_2p, b_2p, palette_2p = emu.getscreenpixel(crown_2p_x, crown_2p_y + i*crown_height, true)
 		if palette_1p == crown_on_palette then
 			CROWNS_1P = CROWNS_1P + 1
+		elseif palette_1p ~= crown_off_palette then
+			glitch()
+			return
 		end
 		if palette_2p == crown_on_palette then
 			CROWNS_2P = CROWNS_2P + 1
+		elseif palette_2p ~= crown_off_palette then
+			glitch()
+			return
 		end
 	end
 
@@ -137,7 +168,12 @@ function play_2p(speed_2p)
 	level_2p = digits(play_2p_text_bg, play_2p_text_fg, play_2p_level_2p_x, play_2p_level_2p_y, virus_digits)
 	viruses_1p = digits(play_2p_text_bg, play_2p_text_fg, play_2p_virus_1p_x, play_2p_virus_1p_y, virus_digits)
 	viruses_2p = digits(play_2p_text_bg, play_2p_text_fg, play_2p_virus_2p_x, play_2p_virus_2p_y, virus_digits)
-	report("play " .. player_status(level_1p, viruses_1p, speed_1p, CROWNS_1P) .. " " .. player_status(level_2p, viruses_2p, speed_2p, CROWNS_2P))
+
+	if speed_1p == nil or level_1p == nil or level_2p == nil or viruses_1p == nil or viruses_2p == nil then
+		glitch()
+	else
+		report("play " .. player_status(level_1p, viruses_1p, speed_1p, CROWNS_1P) .. " " .. player_status(level_2p, viruses_2p, speed_2p, CROWNS_2P))
+	end
 end
 
 function player_status(level, viruses, speed, extra)
@@ -161,13 +197,34 @@ function transition()
 end
 
 function unknown()
-	r, g, b, palette = emu.getscreenpixel(mode_x, mode_y, true)
-	mode_lookup[palette]()
+	-- [NOTE: semicolon]
+	r, g, b, palette = emu.getscreenpixel(mode_x, mode_y, true);
+	(mode_lookup[palette] or glitch)()
 end
 
 function report(s)
 	io.write("" .. emu.framecount() .. " " .. s .. "\n")
 end
+
+-- [NOTE: semicolon]
+-- These semicolons are to avoid an ambiguity in the Lua grammar. From
+-- http://lua-users.org/lists/lua-l/2009-08/msg00543.html:
+--
+-- > z = (function(...) print(...); return "Bar"; end)
+-- > ("Foo"):sub(1,1)
+-- >
+-- > There are two interpretations to this:
+-- >
+-- > 1) Store the newly created function, which calls print and
+-- > returns "Bar" into the variable z, then call string.sub on
+-- > "Foo" and discard the result
+-- >
+-- > 2) Create a temporary function which prints out the parameters
+-- > and returns "Bar", pass in "Foo" to that function, then
+-- > execute string.sub on "Bar" (returning "B" to store into
+-- > variable z)
+-- >
+-- > Use a semicolon to disambiguate this problem.
 
 DEMO = true
 
@@ -237,13 +294,13 @@ digit_mapping =
 	, 6   -- 0b0110
 	, 8   -- 0b0111
 	, 7   -- 0b1000
-	, "X" -- 0b1001
+	, nil -- 0b1001
 	, 5   -- 0b1010
-	, "X" -- 0b1011
-	, "X" -- 0b1100
-	, "X" -- 0b1101
-	, "X" -- 0b1110
-	, "X" -- 0b1111
+	, nil -- 0b1011
+	, nil -- 0b1100
+	, nil -- 0b1101
+	, nil -- 0b1110
+	, nil -- 0b1111
 	}
 digit_width = 8
 digit_always_fg_dx = 3
@@ -254,7 +311,7 @@ speed_fingerprint =
 	, { dx = 3, dy = 0 }
 	}
 speed_mapping =
-	{ "X"   -- 0b00
+	{ nil   -- 0b00
 	, "low" -- 0b01
 	, "hi"  -- 0b10
 	, "med" -- 0b11

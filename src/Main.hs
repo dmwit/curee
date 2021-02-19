@@ -31,7 +31,8 @@ data GameMessage
 
 data Music = Fever | Chill | Off deriving (Bounded, Enum, Eq, Ord, Read, Show)
 data Speed = Low | Med | Hi deriving (Bounded, Enum, Eq, Ord, Read, Show)
-data BoringMessage = StartScreen | Demo | Boot | Cutscene | Pause | Transition deriving (Bounded, Enum, Eq, Ord, Read, Show)
+data BoringMessage = StartScreen | Demo | Boot | Cutscene | Pause | Transition | Glitch
+	deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data PlayerStatus = PlayerStatus
 	{ level :: Word
@@ -129,6 +130,7 @@ transitionVirusCount fmsg@(FramedMessage fr msg) s = case s of
 		Boring Cutscene -> Init
 		Boring Pause -> Init
 		Boring Transition -> Init
+		Boring Glitch -> Init
 		Play1{} -> Init
 		_ -> Ready
 	Ready -> case msg of
@@ -191,6 +193,7 @@ transitionScore fmsg@(FramedMessage fr msg) s = case s of
 		Boring Cutscene -> Init
 		Boring Pause -> Init
 		Boring Transition -> Init
+		Boring Glitch -> Init
 		Play1{} -> Init
 		_ -> Ready
 	Ready -> case msg of
@@ -204,6 +207,7 @@ transitionScore fmsg@(FramedMessage fr msg) s = case s of
 		Boring Cutscene -> (s, mempty)
 		Boring Pause -> (s, mempty)
 		Boring Transition -> (s, mempty)
+		Boring Glitch -> (s, mempty)
 		Play1 status -> case compare score (extra status) of
 			LT -> reportStatus score status (Playing (extra status))
 			EQ -> (s, mempty)
