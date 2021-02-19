@@ -257,6 +257,7 @@ mainLoop mode = go where
 		Score -> transitionScore
 		VirusCount -> transitionVirusCount
 	go s = do
+		-- TODO: catch EOF and exit cleanly
 		bs <- BS.getLine
 		case A.parseOnly parser bs of
 			Left err -> do
