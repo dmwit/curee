@@ -11,7 +11,9 @@ import Data.Char
 import Data.Foldable
 import Data.List
 import Data.Word
+import Paths_curee
 import System.Environment
+import System.Exit
 import Text.Printf
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.ByteString.Char8 as BS
@@ -243,11 +245,12 @@ eventMessage fr s = BS.pack (printf "%d %s\n" fr s)
 main :: IO ()
 main = do
 	args <- getArgs
-	let mode = case args of
-	    	[] -> VirusCount
-	    	["--score"] -> Score
-	    	["--virus"] -> VirusCount
-	    	_ -> error "dunno, lol. try --score or --virus instead"
+	mode <- case args of
+		[] -> pure VirusCount
+		["--score"] -> pure Score
+		["--virus"] -> pure VirusCount
+		["--script-location"] -> getDataFileName "dm-events.lua" >>= putStrLn >> exitWith ExitSuccess
+		_ -> die "dunno, lol. try --score, --virus, or --script-location instead"
 	hSetBuffering stdout LineBuffering
 	mainLoop mode Init
 
