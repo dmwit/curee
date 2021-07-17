@@ -217,7 +217,7 @@ transitionScore fmsg@(FramedMessage fr msg) s = case s of
 	Restarting v -> unused "Restarting"
 	where
 	unused s = error (s ++ " unused in transitionScore")
-	granularity = 10000
+	granularity = 5000
 	reportStatus oldScore status s' =
 		( s'
 		, mconcat
